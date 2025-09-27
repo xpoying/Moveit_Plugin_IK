@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>inverse_kinematics</name>
+  <version>0.0.0</version>
+  <description>Analytical 6-DOF IK plugin for MoveIt 2</description>
+  <maintainer email="2113994486@qq.com">x</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>moveit_core</depend>
+  <depend>pluginlib</depend>
+  <depend>Eigen3</depend>
+  <depend>tf2_eigen</depend>
+  <depend>geometry_msgs</depend>
+  <depend>moveit_msgs</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <!-- 使用 plugins.xml 而不是 YAML -->
+    <moveit_core plugin="${prefix}/plugins.xml"/>
+  </export>
+</package>

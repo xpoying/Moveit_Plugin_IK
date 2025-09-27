@@ -1,0 +1,9 @@
+<class_libraries>
+  <library path="inverse_kinematics_plugin">
+    <class name="inverse_kinematics/IKPlugin" 
+           type="Inverse_Kinematics_Plugin::IKPlugin" 
+           base_class_type="kinematics::KinematicsBase">
+      <description>Analytical inverse kinematics plugin for 6-DOF robots</description>
+    </class>
+  </library>
+</class_libraries>

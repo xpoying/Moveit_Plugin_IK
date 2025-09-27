@@ -1,0 +1,7 @@
+<library path="inverse_kinematics_plugin">
+  <class name="inverse_kinematics/IKPlugin" 
+         type="Inverse_Kinematics_Plugin::IKPlugin" 
+         base_class_type="kinematics::KinematicsBase">
+    <description>Analytical 6-DOF inverse kinematics plugin for MoveIt 2</description>
+  </class>
+</library>
