@@ -1,4 +1,4 @@
 plugins:
   - name: inverse_kinematics/IKPlugin
-    class: inverse_kinematics::IKPlugin
+    class: Inverse_Kinematics_Plugin::IKPlugin
     base_class: kinematics_interface::KinematicsBase

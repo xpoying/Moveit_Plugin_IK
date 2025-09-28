@@ -4,14 +4,13 @@
 
 namespace Inverse_Kinematics_Plugin
 {
-   
-    IKSolution::IKSolution(const moveit::core::RobotModel &robot_model):robot_model_(robot_model){} ;
+
+    IKSolution::IKSolution(const moveit::core::RobotModel &robot_model) : robot_model_(&robot_model) {} // 初始化指针
     bool IKSolution::initIK(std::vector<std::string> &joint_names, const moveit::core::RobotModel &robot_model)
     {
         dh_.clear();
         dh_.reserve(joint_names.size());
         joint_names_ = joint_names;
-        robot_model_ = robot_model;
         for (const auto &jname : joint_names)
         {
             DHParam dh;
@@ -34,14 +33,14 @@ namespace Inverse_Kinematics_Plugin
     }
 
     inline Eigen::Matrix3d IKSolution::forwardRot123(double theta1, double theta2, double theta3,
-                                  const std::vector<DHParam> &dh)
+                                                     const std::vector<DHParam> &dh)
     {
         double c1 = std::cos(theta1), s1 = std::sin(theta1);
         double c2 = std::cos(theta2), s2 = std::sin(theta2);
         double c3 = std::cos(theta3), s3 = std::sin(theta3);
 
-        double a1 = dh[0].a, a2 = dh[1].a, a3 = dh[2].a;
-        double d1 = dh[0].d, alpha1 = dh[0].alpha;
+        
+        double  alpha1 = dh[0].alpha;
 
         // 标准 DH 连乘：R₀¹·R₁²·R₂³
         Eigen::Matrix3d R01, R12, R23;
@@ -87,11 +86,9 @@ namespace Inverse_Kinematics_Plugin
         Eigen::Isometry3d T_tool = Eigen::Isometry3d::Identity();
         for (size_t i = 3; i < joint_names_.size(); ++i)
         {
-            const auto *joint = robot_model_.getJointModel(joint_names_[i]);
+            const auto *joint = robot_model_->getJointModel(joint_names_[i]);
             T_tool = T_tool * joint->getParentLinkModel()->getJointOriginTransform();
         }
-        Eigen::Vector3d tool_offset = T_tool.translation();
-
         // double D_tool = 0.0;
         // for (size_t i = 4; i < joint_names_.size(); ++i)
         // {
@@ -156,7 +153,6 @@ namespace Inverse_Kinematics_Plugin
                     // θ₆ = atan2(R₃₆(2,1)/sinθ₅, -R₃₆(2,0)/sinθ₅)
                     double theta_4, theta_6;
                     double s5 = std::sin(theta_5);
-                    double c5 = std::cos(theta_5);
                     // 3. 手腕翻转 (gimbal)
                     if (std::abs(s5) < EPS)
                     {                                                // θ₅ ≈ 0° or 180°
@@ -193,15 +189,14 @@ namespace Inverse_Kinematics_Plugin
             return solutions[0];
         }
 
-        // 定义关节限位（根据实际机器人调整）
-        std::vector<std::pair<double, double>> joint_limits = {
-            {-M_PI, M_PI}, // joint1
-            {-M_PI, M_PI}, // joint2
-            {-M_PI, M_PI}, // joint3
-            {-M_PI, M_PI}, // joint4
-            {-M_PI, M_PI}, // joint5
-            {-M_PI, M_PI}  // joint6
-        };
+        // 在IKSolution::selectOptimalSolution中替换硬编码
+        std::vector<std::pair<double, double>> joint_limits;
+        for (const auto &jname : joint_names_)
+        {
+            const auto *joint = robot_model_->getJointModel(jname);
+            const auto &bounds = joint->getVariableBounds();
+            joint_limits.emplace_back(bounds[0].min_position_, bounds[0].max_position_);
+        }
 
         // 第一步：筛选有效解
         std::vector<std::vector<double>> valid_solutions = filterValidSolutions(solutions, joint_limits);
@@ -303,7 +298,7 @@ namespace Inverse_Kinematics_Plugin
         return std::sqrt(distance);
     }
 
-    inline void IKSolution::readCurrentStatus(const std::vector<double> &ik_seed_state)
+    void IKSolution::readCurrentStatus(const std::vector<double> &ik_seed_state)
     {
         current_joint_positions_ = ik_seed_state;
     }

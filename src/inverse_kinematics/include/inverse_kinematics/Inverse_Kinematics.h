@@ -72,9 +72,9 @@ namespace Inverse_Kinematics_Plugin
             const std::vector<double> &ik_seed_state,
             double timeout,
             std::vector<double> &solution,
-            const kinematics::KinematicsBase::IKCallbackFn &solution_callback, 
+            const kinematics::KinematicsBase::IKCallbackFn &solution_callback,
             moveit_msgs::msg::MoveItErrorCodes &error_code,
-            const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const override; 
+            const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const override;
         // 4
         bool searchPositionIK(
             const geometry_msgs::msg::Pose &ik_pose,
@@ -82,9 +82,9 @@ namespace Inverse_Kinematics_Plugin
             double timeout,
             const std::vector<double> &consistency_limits,
             std::vector<double> &solution,
-            const kinematics::KinematicsBase::IKCallbackFn &solution_callback, 
+            const kinematics::KinematicsBase::IKCallbackFn &solution_callback,
             moveit_msgs::msg::MoveItErrorCodes &error_code,
-            const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const override; 
+            const kinematics::KinematicsQueryOptions &options = kinematics::KinematicsQueryOptions()) const override;
 
     private:
         std::vector<std::string> joint_names_, link_names_; // 保存关节组里各关节和末端的名字
@@ -93,6 +93,7 @@ namespace Inverse_Kinematics_Plugin
         mutable std::mutex state_mutex_;                      // 线程安全
         std::unique_ptr<IKSolution> ik_solver_;               // 逆运动学求解器
         rclcpp::Node::SharedPtr node_;
+         moveit::core::RobotModelConstPtr robot_model_;
     };
 }
 

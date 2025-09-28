@@ -20,7 +20,7 @@ namespace Inverse_Kinematics_Plugin
     class IKSolution
     {
     public:
-        //构造
+        // 构造
         IKSolution(const moveit::core::RobotModel &robot_model);
         IKSolution() = delete;
         // 初始化  得到机械臂的DH参数
@@ -46,12 +46,12 @@ namespace Inverse_Kinematics_Plugin
         double calculateJointDistance(const std::vector<double> &sol1,
                                       const std::vector<double> &sol2);
         // 读取状态
-        inline void readCurrentStatus(const std::vector<double> &ik_seed_state);
+        void readCurrentStatus(const std::vector<double> &ik_seed_state);
 
     private:
         std::vector<DHParam> dh_;                     // 标准DH
         std::vector<std::string> joint_names_;        // 关节
-        moveit::core::RobotModel robot_model_;        // model
+        const moveit::core::RobotModel* robot_model_;
         std::vector<double> current_joint_positions_; // 状态存储
     };
 
