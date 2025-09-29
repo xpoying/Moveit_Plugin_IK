@@ -17,7 +17,7 @@ namespace Inverse_Kinematics_Plugin
     class IKPlugin : public kinematics::KinematicsBase
     {
     public:
-        // 初始化函数（正确）
+        // 初始化函数
         bool initialize(
             const rclcpp::Node::SharedPtr &node,
             const moveit::core::RobotModel &robot_model,
@@ -93,7 +93,8 @@ namespace Inverse_Kinematics_Plugin
         mutable std::mutex state_mutex_;                      // 线程安全
         std::unique_ptr<IKSolution> ik_solver_;               // 逆运动学求解器
         rclcpp::Node::SharedPtr node_;
-         moveit::core::RobotModelConstPtr robot_model_;
+        moveit::core::RobotModelConstPtr robot_model_;
+       
     };
 }
 

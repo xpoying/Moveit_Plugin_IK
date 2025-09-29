@@ -5,16 +5,27 @@
 namespace Inverse_Kinematics_Plugin
 {
 
-    IKSolution::IKSolution(const moveit::core::RobotModel &robot_model) : robot_model_(&robot_model) {} // 初始化指针
-    bool IKSolution::initIK(std::vector<std::string> &joint_names, const moveit::core::RobotModel &robot_model)
+    IKSolution::IKSolution(const moveit::core::RobotModelConstPtr &robot_model) : robot_model_(robot_model) {} // 初始化指针
+    bool IKSolution::initIK(std::vector<std::string> &joint_names)
     {
         dh_.clear();
         dh_.reserve(joint_names.size());
         joint_names_ = joint_names;
+        if (!robot_model_)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "RobotModel 未初始化!");
+            return false;
+        }
         for (const auto &jname : joint_names)
         {
             DHParam dh;
-            const auto *joint = robot_model.getJointModel(jname);
+            const auto *joint = robot_model_->getJointModel(jname);
+            if (!joint) // 检查关节是否存在
+            {
+                RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "关节 %s 不在机器人模型中", jname.c_str());
+                dh_.clear();
+                return false;
+            }
             // 父连杆到子连杆的齐次坐标变换矩阵
             Eigen::Isometry3d T = joint->getParentLinkModel()->getJointOriginTransform();
             // 平移
@@ -22,7 +33,7 @@ namespace Inverse_Kinematics_Plugin
             // 旋转
             Eigen::Matrix3d R = T.rotation();
 
-            dh.a = std::hypot(o.x(), o.y());          // 连杆长度
+            dh.a = o.x();                             // 连杆长度
             dh.alpha = std::atan2(-R(2, 1), R(2, 2)); // 连杆扭角
             dh.d = o.z();                             // 连杆偏距
             dh.theta = std::atan2(R(1, 0), R(0, 0));  // 关节角（绕 z）
@@ -35,12 +46,16 @@ namespace Inverse_Kinematics_Plugin
     inline Eigen::Matrix3d IKSolution::forwardRot123(double theta1, double theta2, double theta3,
                                                      const std::vector<DHParam> &dh)
     {
+        if (dh.size() < 3) // 确保至少有3个DH参数
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "DH参数不足，需要至少3个，实际: %zu", dh.size());
+            return Eigen::Matrix3d::Identity(); // 或抛出异常
+        }
         double c1 = std::cos(theta1), s1 = std::sin(theta1);
         double c2 = std::cos(theta2), s2 = std::sin(theta2);
         double c3 = std::cos(theta3), s3 = std::sin(theta3);
 
-        
-        double  alpha1 = dh[0].alpha;
+        double alpha1 = dh[0].alpha;
 
         // 标准 DH 连乘：R₀¹·R₁²·R₂³
         Eigen::Matrix3d R01, R12, R23;
@@ -61,6 +76,32 @@ namespace Inverse_Kinematics_Plugin
     }
     std::vector<double> IKSolution::AS(const geometry_msgs::msg::Pose &link_pose)
     {
+        if (!robot_model_)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "RobotModel 为空指针!");
+            return {};
+        }
+
+        // 安全检查
+        if (dh_.size() < 6)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"),
+                         "DH参数不足，需要6个，实际: %zu", dh_.size());
+            return {};
+        }
+
+        if (!robot_model_)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "RobotModel 未初始化!");
+            return {};
+        }
+
+        if (!robot_model_)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "RobotModel 未初始化");
+            return {};
+        }
+
         std::vector<std::vector<double>> sol; // 解
         const double EPS = 1e-6;
 
@@ -73,6 +114,11 @@ namespace Inverse_Kinematics_Plugin
         double qz = link_pose.orientation.z;
         double qw = link_pose.orientation.w;
 
+        RCLCPP_INFO(rclcpp::get_logger("IKSolution"),
+                    "========== 逆解计算输入参数 ==========");
+        RCLCPP_INFO(rclcpp::get_logger("IKSolution"), "位置: x=%f, y=%f, z=%f", x, y, z);
+        RCLCPP_INFO(rclcpp::get_logger("IKSolution"), "四元数: qx=%f, qy=%f, qz=%f, qw=%f", qx, qy, qz, qw);
+
         Eigen::Quaterniond q(qw, qx, qy, qz);
         Eigen::Matrix3d R = q.toRotationMatrix();
         Eigen::Vector3d p(x, y, z);
@@ -83,11 +129,24 @@ namespace Inverse_Kinematics_Plugin
 
         // w求解
         // 工具坐标系计算
+        // 工具坐标系计算
         Eigen::Isometry3d T_tool = Eigen::Isometry3d::Identity();
-        for (size_t i = 3; i < joint_names_.size(); ++i)
+        if (joint_names_.size() > 3)
         {
-            const auto *joint = robot_model_->getJointModel(joint_names_[i]);
-            T_tool = T_tool * joint->getParentLinkModel()->getJointOriginTransform();
+            for (size_t i = 3; i < joint_names_.size(); ++i)
+            {
+                const auto *joint = robot_model_->getJointModel(joint_names_[i]);
+                if (!joint)
+                {
+                    RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "工具关节 %s 不存在", joint_names_[i].c_str());
+                    return {};
+                }
+                T_tool = T_tool * joint->getParentLinkModel()->getJointOriginTransform();
+            }
+        }
+        else
+        {
+            RCLCPP_WARN(rclcpp::get_logger("IKSolution"), "关节数量不足，无法计算完整工具变换");
         }
         // double D_tool = 0.0;
         // for (size_t i = 4; i < joint_names_.size(); ++i)
@@ -171,10 +230,13 @@ namespace Inverse_Kinematics_Plugin
         }
         if (!sol.empty())
         {
+            RCLCPP_INFO(rclcpp::get_logger("IKSolution"), "========== 所有候选解 ==========");
+            RCLCPP_INFO(rclcpp::get_logger("IKSolution"), "共找到 %zu 个候选解:", sol.size());
             return selectOptimalSolution(sol);
         }
         else
         {
+            RCLCPP_ERROR(rclcpp::get_logger("IKSolution"), "========== 无解 ==========");
             return {};
         }
     }
@@ -204,6 +266,7 @@ namespace Inverse_Kinematics_Plugin
         // 第二步：从有效解中选择最优
         if (!valid_solutions.empty())
         {
+            RCLCPP_INFO(rclcpp::get_logger("IKSolution"), "已选出最优解");
             return selectBestFromValidSolutions(valid_solutions);
         }
         else

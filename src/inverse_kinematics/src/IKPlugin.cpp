@@ -17,8 +17,10 @@ namespace Inverse_Kinematics_Plugin
         (void)search_discretization;
         node_ = node;
         group_names_ = group_name;
-        robot_model_ = std::const_pointer_cast<const moveit::core::RobotModel>(
-            std::shared_ptr<moveit::core::RobotModel>(const_cast<moveit::core::RobotModel *>(&robot_model)));
+        // robot_model_ = std::const_pointer_cast<const moveit::core::RobotModel>(
+        // std::shared_ptr<moveit::core::RobotModel>(const_cast<moveit::core::RobotModel *>(&robot_model)));
+        robot_model_ = std::shared_ptr<const moveit::core::RobotModel>(
+            std::shared_ptr<const moveit::core::RobotModel>(), &robot_model);
 
         if (!node_)
         {
@@ -54,15 +56,16 @@ namespace Inverse_Kinematics_Plugin
             RCLCPP_INFO(node_->get_logger(), "  末端帧 %lu: %s", i + 1, link_names_[i].c_str());
         }
 
-        // 初始化IK求解器
-        ik_solver_ = std::make_unique<IKSolution>(robot_model);
-        if (!ik_solver_->initIK(joint_names_, robot_model))
+        // IKPlugin.cpp 中初始化IK求解器
+        ik_solver_ = std::make_unique<IKSolution>(robot_model_); // 传入共享指针
+        if (!ik_solver_->initIK(joint_names_))                   // 传入共享指针
         {
             RCLCPP_ERROR(node_->get_logger(), "IK 求解器初始化失败！");
             return false;
         }
 
         RCLCPP_INFO(node_->get_logger(), "IKPlugin 初始化成功！关节数：%lu", joint_names_.size());
+
         return true;
     }
 
@@ -106,7 +109,6 @@ namespace Inverse_Kinematics_Plugin
         {
             poses.resize(link_names.size());
 
-            // 修复：直接使用传入的robot_model引用创建RobotState
             moveit::core::RobotState robot_state(robot_model_);
 
             robot_state.setJointGroupPositions(group_names_, joint_angles);
@@ -179,7 +181,6 @@ namespace Inverse_Kinematics_Plugin
         (void)timeout;
         (void)consistency_limits;
         (void)options;
-        // 修复：使用种子状态
         ik_solver_->readCurrentStatus(ik_seed_state);
         solution = ik_solver_->AS(ik_pose);
 
