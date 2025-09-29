@@ -21,7 +21,7 @@ namespace Inverse_Kinematics_Plugin
     {
     public:
         // 构造
-        IKSolution(const moveit::core::RobotModelConstPtr& robot_model);
+        IKSolution(const moveit::core::RobotModelConstPtr &robot_model);
         IKSolution() = delete;
         // 初始化  得到机械臂的DH参数
         bool initIK(std::vector<std::string> &group_names_);
@@ -49,10 +49,12 @@ namespace Inverse_Kinematics_Plugin
         void readCurrentStatus(const std::vector<double> &ik_seed_state);
 
     private:
-        std::vector<DHParam> dh_;                     // 标准DH
-        std::vector<std::string> joint_names_;        // 关节
-        moveit::core::RobotModelConstPtr robot_model_; 
-        std::vector<double> current_joint_positions_; // 状态存储
+        std::vector<DHParam> dh_;              // 标准DH
+        std::vector<std::string> joint_names_; // 关节
+        moveit::core::RobotModelConstPtr robot_model_;
+        std::vector<double> current_joint_positions_;               // 状态存储
+        DHParam extractDHFromTransform(const Eigen::Isometry3d &T); // 从变换矩阵提取DH参数的辅助函数
+        bool debug = false;
     };
 
 }

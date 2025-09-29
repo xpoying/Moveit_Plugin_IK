@@ -93,8 +93,6 @@ namespace Inverse_Kinematics_Plugin
         mutable std::mutex state_mutex_;                      // 线程安全
         std::unique_ptr<IKSolution> ik_solver_;               // 逆运动学求解器
         rclcpp::Node::SharedPtr node_;
-        moveit::core::RobotModelConstPtr robot_model_;
-       
     };
 }
 

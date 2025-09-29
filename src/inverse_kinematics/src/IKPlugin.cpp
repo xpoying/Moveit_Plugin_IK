@@ -17,11 +17,7 @@ namespace Inverse_Kinematics_Plugin
         (void)search_discretization;
         node_ = node;
         group_names_ = group_name;
-        // robot_model_ = std::const_pointer_cast<const moveit::core::RobotModel>(
-        // std::shared_ptr<moveit::core::RobotModel>(const_cast<moveit::core::RobotModel *>(&robot_model)));
-        robot_model_ = std::shared_ptr<const moveit::core::RobotModel>(
-            std::shared_ptr<const moveit::core::RobotModel>(), &robot_model);
-
+        this->storeValues(robot_model, group_name, base_frame, tip_frames, search_discretization);
         if (!node_)
         {
             RCLCPP_ERROR(rclcpp::get_logger("IKPlugin"), "传入的 node 指针为空！");
@@ -32,7 +28,7 @@ namespace Inverse_Kinematics_Plugin
         RCLCPP_INFO(node_->get_logger(), "初始化规划组: %s", group_name.c_str());
 
         // 获取关节模型组并验证
-        const auto *jmg = robot_model.getJointModelGroup(group_name);
+        const auto *jmg = this->robot_model_->getJointModelGroup(group_name);
         if (!jmg || jmg->getActiveVariableCount() == 0)
         {
             RCLCPP_ERROR(node_->get_logger(), "规划组 %s 不存在或无活动关节", group_name.c_str());
@@ -57,8 +53,8 @@ namespace Inverse_Kinematics_Plugin
         }
 
         // IKPlugin.cpp 中初始化IK求解器
-        ik_solver_ = std::make_unique<IKSolution>(robot_model_); // 传入共享指针
-        if (!ik_solver_->initIK(joint_names_))                   // 传入共享指针
+        ik_solver_ = std::make_unique<IKSolution>(this->robot_model_); // 传入共享指针
+        if (!ik_solver_->initIK(joint_names_))                         // 传入共享指针
         {
             RCLCPP_ERROR(node_->get_logger(), "IK 求解器初始化失败！");
             return false;
@@ -109,7 +105,7 @@ namespace Inverse_Kinematics_Plugin
         {
             poses.resize(link_names.size());
 
-            moveit::core::RobotState robot_state(robot_model_);
+            moveit::core::RobotState robot_state(this->robot_model_);
 
             robot_state.setJointGroupPositions(group_names_, joint_angles);
             robot_state.update();
